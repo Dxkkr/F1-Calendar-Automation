@@ -6,47 +6,62 @@ import pytz
 TZ = pytz.timezone("America/Sao_Paulo")
 calendar = Calendar()
 
-url = "https://api.motorsportsinfo.app/api/races/f1"
+# API OpenF1 (estável)
+url = "https://api.openf1.org/v1/sessions"
 
 try:
-    response = requests.get(url)
+    response = requests.get(url, timeout=10)
     data = response.json()
 except:
     print("Erro ao acessar API")
     exit(1)
 
-def parse_data(data_iso):
+def converter(data_iso):
     try:
-        dt_utc = datetime.fromisoformat(data_iso.replace("Z", ""))
-        return pytz.utc.localize(dt_utc).astimezone(TZ)
+        dt = datetime.fromisoformat(data_iso.replace("Z", ""))
+        return pytz.utc.localize(dt).astimezone(TZ)
     except:
         return None
 
-mapa = {
-    "fp1": ("Qui (Treino Livre 1)", 1),
-    "fp2": ("Sex (Treino Livre 2)", 1),
-    "fp3": ("Sab (Treino Livre 3)", 1),
-    "qualifying": ("Sab (Classificação)", 1),
-    "sprint": ("Sab (Sprint)", 1),
-    "gp": ("Dom (Corrida)", 2)
-}
+for session in data:
+    nome = session.get("session_name")
+    inicio = session.get("date_start")
 
-for race in data:
-    nome_gp = race.get("name", "F1")
-    sessions = race.get("sessions", {})
+    if not nome or not inicio:
+        continue
 
-    for key, (label, duracao) in mapa.items():
-        if key in sessions and sessions[key]:
-            inicio = parse_data(sessions[key])
-            if not inicio:
-                continue
+    dt_inicio = converter(inicio)
+    if not dt_inicio:
+        continue
 
-            e = Event()
-            e.name = f"{nome_gp} - {label}"
-            e.begin = inicio
-            e.duration = timedelta(hours=duracao)
+    # Mapeando nomes
+    if "Practice 1" in nome:
+        label = "Qui (Treino Livre 1)"
+        dur = 1
+    elif "Practice 2" in nome:
+        label = "Sex (Treino Livre 2)"
+        dur = 1
+    elif "Practice 3" in nome:
+        label = "Sab (Treino Livre 3)"
+        dur = 1
+    elif "Qualifying" in nome:
+        label = "Sab (Classificação)"
+        dur = 1
+    elif "Race" in nome:
+        label = "Dom (Corrida)"
+        dur = 2
+    elif "Sprint" in nome:
+        label = "Sab (Sprint)"
+        dur = 1
+    else:
+        continue
 
-            calendar.events.add(e)
+    evento = Event()
+    evento.name = f"{session.get('meeting_name')} - {label}"
+    evento.begin = dt_inicio
+    evento.duration = timedelta(hours=dur)
+
+    calendar.events.add(evento)
 
 with open("f1.ics", "w", encoding="utf-8") as f:
     f.writelines(calendar)
