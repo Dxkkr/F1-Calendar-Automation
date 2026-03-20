@@ -31,3 +31,6 @@ jobs:
           git add f1.ics
           git commit -m "Atualização automática" || exit 0
           git push
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
