@@ -8,19 +8,18 @@ TZ = pytz.timezone("America/Sao_Paulo")
 url = "https://api.openf1.org/v1/sessions"
 data = requests.get(url).json()
 
-def formatar_data(dt):
+def formatar(dt):
     return dt.strftime("%Y%m%dT%H%M%S")
 
 def converter(data_iso):
-    try:
-        dt = datetime.fromisoformat(data_iso.replace("Z", "+00:00"))
-        return dt.astimezone(TZ)
-    except:
-        return None
+    dt = datetime.fromisoformat(data_iso.replace("Z", "+00:00"))
+    return dt.astimezone(TZ)
 
 conteudo = """BEGIN:VCALENDAR
 VERSION:2.0
+PRODID:-//F1 Calendar//PT-BR
 CALSCALE:GREGORIAN
+METHOD:PUBLISH
 """
 
 for session in data:
@@ -58,10 +57,12 @@ for session in data:
 
     conteudo += f"""BEGIN:VEVENT
 UID:{uuid.uuid4()}
-DTSTAMP:{formatar_data(datetime.utcnow())}Z
-DTSTART:{formatar_data(dt_inicio)}
-DTEND:{formatar_data(dt_fim)}
+DTSTAMP:{formatar(datetime.utcnow())}Z
+DTSTART;TZID=America/Sao_Paulo:{formatar(dt_inicio)}
+DTEND;TZID=America/Sao_Paulo:{formatar(dt_fim)}
 SUMMARY:{gp} - {label}
+DESCRIPTION:Formula 1
+STATUS:CONFIRMED
 END:VEVENT
 """
 
@@ -70,4 +71,4 @@ conteudo += "END:VCALENDAR"
 with open("f1.ics", "w", encoding="utf-8") as f:
     f.write(conteudo)
 
-print("Calendário gerado corretamente")
+print("ICS gerado corretamente")
