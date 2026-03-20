@@ -12,8 +12,11 @@ def formatar_data(dt):
     return dt.strftime("%Y%m%dT%H%M%S")
 
 def converter(data_iso):
-    dt = datetime.fromisoformat(data_iso.replace("Z", ""))
-    return pytz.utc.localize(dt).astimezone(TZ)
+    try:
+        dt = datetime.fromisoformat(data_iso.replace("Z", "+00:00"))
+        return dt.astimezone(TZ)
+    except:
+        return None
 
 conteudo = """BEGIN:VCALENDAR
 VERSION:2.0
