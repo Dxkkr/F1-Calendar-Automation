@@ -1,0 +1,33 @@
+name: Atualizar calendário F1
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"  # a cada 6 horas
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clonar repositório
+        uses: actions/checkout@v3
+
+      - name: Instalar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Gerar calendário
+        run: python generate.py
+
+      - name: Commit e push
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add f1.ics
+          git commit -m "Atualização automática" || exit 0
+          git push
