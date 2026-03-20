@@ -1,40 +1,35 @@
 import requests
-from ics import Calendar, Event
 from datetime import datetime, timedelta
 import pytz
+import uuid
 
 TZ = pytz.timezone("America/Sao_Paulo")
-calendar = Calendar()
 
-# API OpenF1 (estável)
 url = "https://api.openf1.org/v1/sessions"
+data = requests.get(url).json()
 
-try:
-    response = requests.get(url, timeout=10)
-    data = response.json()
-except:
-    print("Erro ao acessar API")
-    exit(1)
+def formatar_data(dt):
+    return dt.strftime("%Y%m%dT%H%M%S")
 
 def converter(data_iso):
-    try:
-        dt = datetime.fromisoformat(data_iso.replace("Z", ""))
-        return pytz.utc.localize(dt).astimezone(TZ)
-    except:
-        return None
+    dt = datetime.fromisoformat(data_iso.replace("Z", ""))
+    return pytz.utc.localize(dt).astimezone(TZ)
+
+conteudo = """BEGIN:VCALENDAR
+VERSION:2.0
+CALSCALE:GREGORIAN
+"""
 
 for session in data:
     nome = session.get("session_name")
     inicio = session.get("date_start")
+    gp = session.get("meeting_name")
 
     if not nome or not inicio:
         continue
 
     dt_inicio = converter(inicio)
-    if not dt_inicio:
-        continue
 
-    # Mapeando nomes
     if "Practice 1" in nome:
         label = "Qui (Treino Livre 1)"
         dur = 1
@@ -56,14 +51,20 @@ for session in data:
     else:
         continue
 
-    evento = Event()
-    evento.name = f"{session.get('meeting_name')} - {label}"
-    evento.begin = dt_inicio
-    evento.duration = timedelta(hours=dur)
+    dt_fim = dt_inicio + timedelta(hours=dur)
 
-    calendar.events.add(evento)
+    conteudo += f"""BEGIN:VEVENT
+UID:{uuid.uuid4()}
+DTSTAMP:{formatar_data(datetime.utcnow())}Z
+DTSTART:{formatar_data(dt_inicio)}
+DTEND:{formatar_data(dt_fim)}
+SUMMARY:{gp} - {label}
+END:VEVENT
+"""
+
+conteudo += "END:VCALENDAR"
 
 with open("f1.ics", "w", encoding="utf-8") as f:
-    f.writelines(calendar)
+    f.write(conteudo)
 
-print("Calendário gerado com sucesso")
+print("Calendário gerado corretamente")
